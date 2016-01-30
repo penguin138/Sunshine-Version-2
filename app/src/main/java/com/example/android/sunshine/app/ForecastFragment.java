@@ -1,8 +1,13 @@
 package com.example.android.sunshine.app;
 
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.Preference;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.text.format.Time;
 import android.util.Log;
@@ -12,8 +17,10 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -52,26 +59,56 @@ public class ForecastFragment extends Fragment {
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
         listView = (ListView) rootView.findViewById(R.id.listview_forecast);
+        /*ArrayList<String> fakeData= new ArrayList<>();
+        fakeData.add("1");
+        fakeData.add("2");
+        fakeData.add("3");
+        fakeData.add("4");
+        fakeData.add("5");
+        fakeData.add("6");
+        fakeData.add("7");
+        fakeData.add("8");
+        fakeData.add("9");
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(getActivity(),R.layout.list_item_forecast,R.id.list_item_forecast_textview,fakeData);
+        listView.setAdapter(adapter);*/
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                Intent intent = new Intent(ForecastFragment.this.getActivity(), DetailActivity.class)
+                        .putExtra(Intent.EXTRA_TEXT, (String) parent.getItemAtPosition(position));
+                startActivity(intent);
 
+                //Toast.makeText(ForecastFragment.this.getActivity(),(String) parent.getItemAtPosition(position), Toast.LENGTH_SHORT).show();
+            }
+        });
         return rootView;
     }
 
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
-        inflater.inflate(R.menu.forecastfragment,menu);
+        inflater.inflate(R.menu.forecastfragment, menu);
     }
-
+    private void updateWeather() {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        String location = preferences.getString(getString(R.string.pref_location), getString(R.string.default_location));
+        String tempUnits = preferences.getString(getString(R.string.pref_temperature),getString(R.string.default_temperature));
+        new FetchWeatherTask().execute(location,tempUnits);
+    }
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.action_refresh) {
-            new FetchWeatherTask().execute("94035");
+            updateWeather();
             return true;
-        } else {
-            return super.onOptionsItemSelected(item);
         }
+        return super.onOptionsItemSelected(item);
     }
 
+    @Override
+    public void onStart() {
+        super.onStart();
+        updateWeather();
+    }
 
     /**
      * Ignores all params except first
@@ -90,8 +127,10 @@ public class ForecastFragment extends Fragment {
             String highLowStr = roundedHigh + "/" + roundedLow;
             return highLowStr;
         }
-
-        private String[] getWeatherDataFromJson(String forecastJsonStr, int numDays)
+        private double convertToFahrenheit(double temperature) {
+            return temperature*9.0/5.0+32.0;
+        }
+        private String[] getWeatherDataFromJson(String forecastJsonStr, int numDays, String tempUnits)
                 throws JSONException {
 
             final String OWM_LIST = "list";
@@ -141,7 +180,10 @@ public class ForecastFragment extends Fragment {
                 JSONObject temperatureObject = dayForecast.getJSONObject(OWM_TEMPERATURE);
                 double high = temperatureObject.getDouble(OWM_MAX);
                 double low = temperatureObject.getDouble(OWM_MIN);
-
+                if (tempUnits.equals("Fahrenheit")) {
+                    high = convertToFahrenheit(high);
+                    low = convertToFahrenheit(low);
+                }
                 highAndLow = formatHighLows(high, low);
                 resultStrs[i] = day + " - " + description + " - " + highAndLow;
             }
@@ -162,7 +204,7 @@ public class ForecastFragment extends Fragment {
             // Will contain the raw JSON response as a string.
             String forecastJsonStr = null;
             ArrayList<String> result = null;
-            int numberOfDays = 16;
+            int numberOfDays = 9;
 
             try {
                 // Construct the URL for the OpenWeatherMap query
@@ -213,7 +255,7 @@ public class ForecastFragment extends Fragment {
                 forecastJsonStr = buffer.toString();
                 Log.v(LOG_TAG, forecastJsonStr);
                 result = new ArrayList<>();
-                result.addAll(Arrays.asList(getWeatherDataFromJson(forecastJsonStr, numberOfDays)));
+                result.addAll(Arrays.asList(getWeatherDataFromJson(forecastJsonStr, numberOfDays, params[1])));
             } catch (IOException e) {
                 Log.e(LOG_TAG, "Error ", e);
                 // If the code didn't successfully get the weather data, there's no point in attempting
