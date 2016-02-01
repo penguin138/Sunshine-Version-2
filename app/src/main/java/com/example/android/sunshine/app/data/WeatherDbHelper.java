@@ -31,6 +31,7 @@ public class WeatherDbHelper extends SQLiteOpenHelper {
     private static final int DATABASE_VERSION = 2;
 
     static final String DATABASE_NAME = "weather.db";
+    //static final  String LOC_DATABASE_NAME = "location.db";
 
     public WeatherDbHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -69,6 +70,17 @@ public class WeatherDbHelper extends SQLiteOpenHelper {
                 " UNIQUE (" + WeatherEntry.COLUMN_DATE + ", " +
                 WeatherEntry.COLUMN_LOC_KEY + ") ON CONFLICT REPLACE);";
 
+        final String INTEGER = " INTEGER";
+        final String REAL = " REAL";
+        final String NOT_NULL = " NOT NULL";
+        final String TEXT = " TEXT";
+        String sqlCreateLocationTable = "CREATE TABLE " + WeatherContract.LocationEntry.TABLE_NAME
+                + " ( " + WeatherContract.LocationEntry._ID + INTEGER + " PRIMARY KEY, "
+                + WeatherContract.LocationEntry.COLUMN_CITY_NAME + TEXT + NOT_NULL + ", "
+                + WeatherContract.LocationEntry.COLUMN_LOCATION_SETTING + TEXT + " UNIQUE "+ NOT_NULL + ", "
+                + WeatherContract.LocationEntry.COLUMN_COORD_LAT + REAL + NOT_NULL + ", "
+                + WeatherContract.LocationEntry.COLUMN_COORD_LONG + REAL + NOT_NULL + ");";
+        sqLiteDatabase.execSQL(sqlCreateLocationTable);
         sqLiteDatabase.execSQL(SQL_CREATE_WEATHER_TABLE);
     }
 
